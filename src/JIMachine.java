@@ -16,6 +16,8 @@ public class JIMachine extends JFrame
     private double screenHeight;
     private double zoomLevel = 1.00;
     private final double ZOOM = .25;
+    private final double MIN_ZOOM = .15;
+    private final double MAX_ZOOM = 4.00;
     private BufferedImage image = null;
     private static final int DEFAULT_W = 1200;
     private static final int DEFAULT_H = 800;
@@ -41,7 +43,7 @@ public class JIMachine extends JFrame
                 if(JIMachine.this.image == null)
                     return;
 
-                g.drawImage(JIMachine.this.image, 0, 0, JIMachine.this.getImageZoomWidth(), JIMachine.this.getImageZoomHeight(), null);
+                g.drawImage(JIMachine.this.image, 0, 0, JIMachine.this.getImageZoomWidth(), JIMachine.this.getImageZoomHeight(), this);
             }
 
             @Override
@@ -53,7 +55,7 @@ public class JIMachine extends JFrame
         }
 
         this.picPane = new PicturePane();
-        add(this.picPane);
+        add(this.picPane, BorderLayout.CENTER);
 
         // Add buttons
         JButton open = new JButton("Open");
@@ -92,8 +94,11 @@ public class JIMachine extends JFrame
             {
                 if(JIMachine.this.image == null)
                     return;
-                JIMachine.this.zoomLevel += (JIMachine.this.zoomLevel * JIMachine.this.ZOOM);
-                repaint();
+                if(JIMachine.this.zoomLevel < JIMachine.this.MAX_ZOOM)
+                {
+                    JIMachine.this.zoomLevel += (JIMachine.this.zoomLevel * JIMachine.this.ZOOM);
+                    repaint();
+                }
             }
         });
 
@@ -118,8 +123,11 @@ public class JIMachine extends JFrame
             {
                 if(JIMachine.this.image == null)
                     return;
-                JIMachine.this.zoomLevel -= (JIMachine.this.zoomLevel * JIMachine.this.ZOOM);
-                repaint();
+                if(JIMachine.this.zoomLevel > JIMachine.this.MIN_ZOOM)
+                {
+                    JIMachine.this.zoomLevel -= (JIMachine.this.zoomLevel * JIMachine.this.ZOOM);
+                    repaint();
+                }
             }
         });
 
