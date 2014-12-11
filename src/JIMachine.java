@@ -6,6 +6,9 @@ import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  * Created by Justin on 10/18/2014.
@@ -19,10 +22,14 @@ public class JIMachine extends JFrame
     private final double MIN_ZOOM = .15;
     private final double MAX_ZOOM = 4.00;
     private BufferedImage image = null;
-    private static final int DEFAULT_W = 1200;
-    private static final int DEFAULT_H = 800;
+    private ArrayList<BufferedImage> images = new ArrayList<BufferedImage>();
+    private static final int DEFAULT_W = 1000;
+    private static final int DEFAULT_H = 667;
     private JPanel buttonPanel = null;
     private JComponent picPane = null;
+    private final int INTRAVEL = 1;
+    private final int ZERO = 0;
+    private File curDir = new File(System.getProperty("user.dir"));
 
     public JIMachine()
     {
@@ -32,6 +39,7 @@ public class JIMachine extends JFrame
         this.screenHeight = screenSize.getHeight() / 2;
         setSize((int)this.screenWidth, (int)this.screenHeight);
         setLocationByPlatform(true);
+
 
         // Add jcomponent with inner class
         class PicturePane extends JComponent
@@ -65,7 +73,7 @@ public class JIMachine extends JFrame
             public void actionPerformed(ActionEvent e)
             {
                 JFileChooser chooser = new JFileChooser();
-                chooser.setCurrentDirectory(new File("."));
+                chooser.setCurrentDirectory(JIMachine.this.curDir);
 
                 int result = chooser.showOpenDialog(JIMachine.this);
 
@@ -75,6 +83,9 @@ public class JIMachine extends JFrame
                     try
                     {
                         JIMachine.this.image = ImageIO.read(chooser.getSelectedFile());
+                        JIMachine.this.curDir = new File(chooser.getSelectedFile().getParent());
+                        loadDirectory();
+                        syncImage();
                         repaint();
                     }
                     catch (IOException ex)
@@ -141,6 +152,55 @@ public class JIMachine extends JFrame
             }
         });
 
+        JButton prev = new JButton("Previous");
+        Action prevAction = new AbstractAction()
+        {
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                if (!JIMachine.this.images.isEmpty())
+                {
+                    if (JIMachine.this.images.indexOf(JIMachine.this.image) == ZERO)
+                    {
+                        JIMachine.this.image = JIMachine.this.images.get(JIMachine.this.images.size() - INTRAVEL);
+                    } else
+                    {
+                        JIMachine.this.image = JIMachine.this.images.get(JIMachine.this.images.indexOf(JIMachine.this.image) - INTRAVEL);
+                    }
+                    repaint();
+                }
+
+            }
+        };
+        prev.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("LEFT"), "prevleft");
+        prev.getActionMap().put("prevleft", prevAction);
+        prev.addActionListener(prevAction );
+
+
+        JButton next = new JButton("Next");
+        Action nextAction = new AbstractAction()
+        {
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                if(!JIMachine.this.images.isEmpty())
+                {
+                    if (JIMachine.this.images.indexOf(JIMachine.this.image) == JIMachine.this.images.size() - INTRAVEL )
+                    {
+                        JIMachine.this.image = JIMachine.this.images.get(ZERO);
+                    } else
+                    {
+                        JIMachine.this.image = JIMachine.this.images.get(JIMachine.this.images.indexOf(JIMachine.this.image) + INTRAVEL);
+                    }
+                    repaint();
+                }
+            }
+        };
+
+        next.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("RIGHT"), "nextright");
+        next.getActionMap().put("nextright", nextAction);
+        next.addActionListener(nextAction );
+
 
         // Add buttons to jpanel
         this.buttonPanel = new JPanel();
@@ -148,22 +208,96 @@ public class JIMachine extends JFrame
         this.buttonPanel.add(zoomIn);
         this.buttonPanel.add(reset);
         this.buttonPanel.add(zoomOut);
+        this.buttonPanel.add(prev);
+        this.buttonPanel.add(next);
         this.buttonPanel.add(quit);
         add( this.buttonPanel, BorderLayout.SOUTH);
+        loadDirectory();
+        setImage();
 
     }
 
     private int getImageZoomWidth()
     {
 
-         double width = this.image.getWidth() * this.zoomLevel;
+         double width = (this.image.getWidth() * this.zoomLevel);
          return (int) width;
     }
 
     private int getImageZoomHeight()
     {
-        double width = this.image.getHeight() * this.zoomLevel;
-        return (int) width;
+        double height = (this.image.getHeight() * this.zoomLevel);
+        return (int) height;
+    }
+
+    private void loadDirectory()
+    {
+        ArrayList<BufferedImage> ims = new ArrayList<BufferedImage>();
+        File[] f = JIMachine.this.curDir.listFiles();
+        for (File file : f)
+        {
+            if (file != null && (file.getName().toLowerCase().endsWith(".jpg") || file.getName().toLowerCase().endsWith(".jpeg")))
+            {
+                try
+                {
+                    ims.add(ImageIO.read(file));
+                }
+                catch (IOException ex)
+                {
+                    ex.printStackTrace();
+                }
+            }
+        }
+
+        if(!ims.isEmpty())
+        {
+            this.images = ims;
+        }
+    }
+
+    private void setImage()
+    {
+        if(!this.images.isEmpty())
+        {
+            this.image = this.images.get(ZERO);
+            repaint();
+        }
+    }
+
+    private void syncImage()
+    {
+        boolean match = false;
+        if(!this.images.isEmpty())
+        {
+            Iterator<BufferedImage> i = this.images.iterator();
+            while(i.hasNext())
+            {
+                BufferedImage img = i.next();
+                if (bufferedImagesEqual(this.image, img))
+                {
+                   i.remove();
+                   match = true;
+                }
+            }
+        }
+        if(match)
+        {
+            this.images.add(this.image);
+        }
+    }
+
+    private boolean bufferedImagesEqual(BufferedImage img1, BufferedImage img2) {
+        if (img1.getWidth() == img2.getWidth() && img1.getHeight() == img2.getHeight()) {
+            for (int x = 0; x < img1.getWidth(); x++) {
+                for (int y = 0; y < img1.getHeight(); y++) {
+                    if (img1.getRGB(x, y) != img2.getRGB(x, y))
+                        return false;
+                }
+            }
+        } else {
+            return false;
+        }
+        return true;
     }
 
 
